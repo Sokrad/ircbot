@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <string.h>
+
+#include "libircclient.h"
+
+typedef struct
+{
+	char* channel;
+	char* nick;
+} irc_ctx_t;
+
+int main(int argc, char** argv)
+{
+	irc_callbacks_t callbacks;
+	irc_ctx_t ctx;
+	irc_session_t *s;
+
+	/*if(argc != 4)
+	{
+		printf ("bot brauch das\n");
+		return 1;
+	}*/
+
+
+
+	memset(&callbacks, 0, sizeof(callbacks));
+	
+	//--
+
+	//--
+
+	ctx.channel = "campercommunity";
+	ctx.nick = "FHboT";
+
+	s = irc_create_session(&callbacks);
+	
+	if(!s)
+	{
+		printf("Error");
+		return 1;
+	}
+
+	irc_set_ctx (s,&ctx);
+	irc_option_set (s, LIBIRC_OPTION_STRIPNICKS);
+
+	if( irc_connect (s, "irc.quakenet.org", 6667, 0,ctx.nick,0,0))
+	{
+		printf("Konnte keine verbindung zum Server aufbauen...\n");
+		return 1;
+	}	
+	
+	irc_run (s);
+
+	printf("bot laeuft\n");
+
+	return 0;
+}
+
