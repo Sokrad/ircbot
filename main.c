@@ -17,7 +17,7 @@ typedef struct
 irc_ctx_t ctx;
 char * server = NULL;
 short unsigned int port = 6667;
-char * botnick = NULL;
+char botnick[100];
 
 //-- Configfile Vars
 
@@ -84,9 +84,14 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	if ( !strcmp (params[1], "!quit") )
 		irc_cmd_quit (session, "Bot wird beendet...");
 	
+	if(strstr(params[1],botnick))
+	{
+		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,"me?");
+	}
+	
 	if ( strstr (params[1], "!nick") == params[1] )
 	{
-		//strcpy(params[1] + 6, nick );
+		sprintf(botnick,"%s",params[1] + 6);
 		irc_cmd_nick (session, params[1] + 6);
 	}
 	
@@ -120,18 +125,24 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	else if ( strstr (params[1], "!topic ") == params[1] )
 		irc_cmd_topic (session, params[0], params[1] + 7);
 
-	if(strstr(params[1],ctx.nick))
+/*	if(strstr(params[1],ctx.nick))
 	{
 		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,"me?");
 	}
+*/
 
+	if(strstr(params[1],"!debug"))
+	{
+		//printf("%s\n",botnick);
+	}
 }
 
 
 void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
+	sprintf(botnick,"%s",ctx.nick);
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
-	
+//	botnick = ctx.nick;
 	irc_cmd_join (session, ctx->channel, 0);
 }
 
@@ -159,6 +170,9 @@ int main(int argc, char** argv)
 {
 	irc_callbacks_t callbacks;
 	irc_session_t *s;
+	
+//	botnick = NULL;
+
 	
 	//Time init
 	
