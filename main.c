@@ -17,9 +17,11 @@ typedef struct
 irc_ctx_t ctx;
 char * server = NULL;
 short unsigned int port = 6667;
+char * botnick = NULL;
 
 //-- Configfile Vars
-#define BUFFER_SIZE 500
+
+#define BUFFER_SIZE 1000
 
 char* filename = NULL;
 char configLine[BUFFER_SIZE];
@@ -35,6 +37,7 @@ struct tm * ptm;
 
 int configfileLaden(char * filen)
 {
+
 	printf(" : - Lade aus %s \n",filen);
 	
 	configFile = fopen(filen,"r");
@@ -45,16 +48,36 @@ int configfileLaden(char * filen)
 		fclose(configFile);
 		return 0;
 	}
-//	fprintf(configFile,"Testing");
+
+	char tmp[BUFFER_SIZE];
 
  	while(fgets(configLine, BUFFER_SIZE, configFile) != NULL)
 	{
-		strcpy(server,		strtok(configLine,";"));
-		strcpy(ctx.nick,	strtok(NULL,";"));
-		strcpy(ctx.channel,	strtok(NULL,"\n"));
+		sprintf(tmp,"%s",configLine);
+	}
+
+	fclose(configFile);
+
+	//printf("%s",tmp);
+
+	char params[10][100];
+	int i=0;
+
+	char *ptr =strtok(tmp,";");
+
+	while(ptr !=NULL)
+	{
+		sprintf(params[i],"%s",ptr);
+		ptr = strtok(NULL, ";");
+		i++;
 	}
 	
-	fclose(configFile);
+//	strcpy(server,params[0]);
+//	strcpy(params[0],server);
+	server = params[0];
+	ctx.nick = params[1];
+	ctx.channel = params[2];
+	
 	return 1;
 }
 
@@ -65,6 +88,7 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	
 	if ( strstr (params[1], "!nick") == params[1] )
 	{
+		//strcpy(params[1] + 6, nick );
 		irc_cmd_nick (session, params[1] + 6);
 	}
 	
@@ -93,19 +117,30 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,tmp);
 	}
 
+	if ( !strcmp (params[1], "!topic") )
+		irc_cmd_topic (session, params[0], 0);
+	else if ( strstr (params[1], "!topic ") == params[1] )
+		irc_cmd_topic (session, params[0], params[1] + 7);
+
+	if(strstr(params[1],ctx.nick))
+	{
+		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,"me?");
+	}
+
 }
 
 
 void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
+	
 	irc_cmd_join (session, ctx->channel, 0);
 }
 
 void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	irc_cmd_user_mode (session, "+i");
-	irc_cmd_msg (session, params[0], "Hi all");
+	//irc_cmd_msg (session, params[0], "Hi all");
 }
 
 void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -125,7 +160,6 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 int main(int argc, char** argv)
 {
 	irc_callbacks_t callbacks;
-	//irc_ctx_t ctx;
 	irc_session_t *s;
 	
 	//Time init
