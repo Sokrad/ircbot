@@ -32,8 +32,6 @@ FILE *configFile;
 time_t rawtime;
 struct tm * ptm;
 
-  
-
 
 int configfileLaden(char * filen)
 {
@@ -47,7 +45,7 @@ int configfileLaden(char * filen)
 		fclose(configFile);
 		return 0;
 	}
-	fprintf(configFile,"Testing");
+//	fprintf(configFile,"Testing");
 
  	while(fgets(configLine, BUFFER_SIZE, configFile) != NULL)
 	{
@@ -60,23 +58,8 @@ int configfileLaden(char * filen)
 	return 1;
 }
 
-
-void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+void ircCommands(irc_session_t * session,const char * origin,const char ** params)
 {
-	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
-	irc_cmd_join (session, ctx->channel, 0);
-}
-
-void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
-{
-	irc_cmd_user_mode (session, "+i");
-	irc_cmd_msg (session, params[0], "Hi all");
-}
-
-void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
-{
-	//printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
-		
 	if ( !strcmp (params[1], "!quit") )
 		irc_cmd_quit (session, "Bot wird beendet...");
 	
@@ -107,10 +90,36 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 	{	
 		char tmp[60];
 		sprintf(tmp,"Es ist %2d:%02d\n", (ptm->tm_hour+GMT)%24, ptm->tm_min);
-
-		irc_cmd_msg(session,params[0],tmp);
+		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,tmp);
 	}
-	
+
+}
+
+
+void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+{
+	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
+	irc_cmd_join (session, ctx->channel, 0);
+}
+
+void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+{
+	irc_cmd_user_mode (session, "+i");
+	irc_cmd_msg (session, params[0], "Hi all");
+}
+
+void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+{
+	printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
+
+	ircCommands(session,origin,params);
+}
+
+void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+{
+	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
+		
+	 ircCommands(session,origin,params);
 }
 
 int main(int argc, char** argv)
@@ -169,6 +178,7 @@ int main(int argc, char** argv)
 	callbacks.event_connect = event_connect;
 	callbacks.event_join = event_join;
 	callbacks.event_channel = event_channel;
+	callbacks.event_privmsg = event_privmsg;
 	//--
 
 	
