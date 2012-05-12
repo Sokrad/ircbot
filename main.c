@@ -72,8 +72,6 @@ int configfileLaden(char * filen)
 		i++;
 	}
 	
-//	strcpy(server,params[0]);
-//	strcpy(params[0],server);
 	server = params[0];
 	ctx.nick = params[1];
 	ctx.channel = params[2];
