@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "lib/libircclient/libircclient.h"
 #include "lib/sqlite/sqlite3.h"
@@ -13,17 +14,25 @@ typedef struct
 
 //----------------- Gloabel Variablen
 
-#define BUFFER_SIZE 500
-
 irc_ctx_t ctx;
 char * server = NULL;
-char* filename = NULL;
 short unsigned int port = 6667;
 
 //-- Configfile Vars
+#define BUFFER_SIZE 500
+
+char* filename = NULL;
 char configLine[BUFFER_SIZE];
 FILE *configFile;
 
+//-- Time Vars
+
+#define GMT (+2)
+
+time_t rawtime;
+struct tm * ptm;
+
+  
 
 
 int configfileLaden(char * filen)
@@ -93,6 +102,14 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 		}	
 	
 	}
+
+	if(strstr(params[1],"!time"))
+	{	
+		char tmp[60];
+		sprintf(tmp,"Es ist %2d:%02d\n", (ptm->tm_hour+GMT)%24, ptm->tm_min);
+
+		irc_cmd_msg(session,params[0],tmp);
+	}
 	
 }
 
@@ -102,8 +119,11 @@ int main(int argc, char** argv)
 	//irc_ctx_t ctx;
 	irc_session_t *s;
 	
-
+	//Time init
 	
+	time ( &rawtime );
+	ptm = gmtime ( &rawtime );
+
 
 	printf(" : - Bot wird gestartet...\n");
 
