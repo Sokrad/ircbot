@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 
 #include "lib/libircclient/libircclient.h"
 #include "lib/sqlite/sqlite3.h"
@@ -14,7 +15,7 @@ typedef struct
 
 typedef struct
 {
-	char* channel;
+	char channel[32];
 	unsigned int settings;
 }channel_settings;
 //----------------- Gloabel Variablen
@@ -25,6 +26,7 @@ irc_ctx_t ctx;
 char * server = NULL;
 short unsigned int port = 6667;
 char botnick[100];
+unsigned int currentChannelCount=0;
 
 //-- Configfile Vars
 
@@ -99,6 +101,64 @@ int configfileLaden(char * filen)
 	return 1;
 }
 
+void setChannelSettings(const char channel[],const unsigned int settings)
+{
+	
+	int i;
+	for(i=0;i<MAX_CHANNELS;i++)
+	{
+		if(strstr(chansettings[i].channel,channel))
+		{
+			chansettings[i].settings = settings;
+			break;
+		}
+	}
+
+}
+
+void rmChannel(const char channel[])
+{
+	int i;
+	for(i=0;i<MAX_CHANNELS;i++)
+	{
+		if(strstr(chansettings[i].channel,channel))
+		{
+			chansettings[i].channel[0] = 'X';
+			break;
+		}
+	}
+
+}
+
+void addChannelSettings(const char channel[],const unsigned int settings)
+{
+	strcpy(chansettings[(currentChannelCount-1)].channel,channel);
+	chansettings[(currentChannelCount-1)].settings = settings;
+	printf(" : - %s config set = %d\n",chansettings[(currentChannelCount-1)].channel,chansettings[(currentChannelCount-1)].settings);
+}
+
+unsigned int getChannelSettings(const char channel[])
+{
+	int i;
+	for(i=0;i<MAX_CHANNELS;i++)
+	{
+		//printf("%c-\n",chansettings[i].channel[0] );
+		if(chansettings[i].channel[0] != '#')
+		{
+			addChannelSettings(channel,DEFAULT_CHANNEL_SETTINGS);
+			return DEFAULT_CHANNEL_SETTINGS;
+		}
+//		printf("%s=%s",channel,chansettings[i].channel);
+
+		if(strcmp(channel,chansettings[i].channel) == 0)
+		{
+			return chansettings[i].settings;
+		}			
+	}
+	
+}
+
+
 void ircCommands(irc_session_t * session,const char * origin,const char ** params,unsigned int settings)
 {
 	
@@ -119,17 +179,20 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 
 	if(settings & JOIN_PART)
 	{	
-
-		if (strstr (params[1], "!join") == params[1] )
-		{
-			irc_cmd_join (session, params[1] + 6,0);
-		}
+		if(currentChannelCount < MAX_CHANNELS)
+			if (strstr (params[1], "!join") == params[1] )
+			{
+				irc_cmd_join (session, params[1] + 6,0);
+				currentChannelCount++;
+			}
 
 		if (strstr (params[1], "!part") == params[1] )
 		{
 			if(strstr(params[0],ctx.channel) == 0)
 			{
 				irc_cmd_part (session, params[0]);
+				rmChannel(params[0]);
+				currentChannelCount--;
 			}
 			else
 			{
@@ -154,17 +217,52 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 			irc_cmd_topic (session, params[0], params[1] + 7);
 	}
 
-/*	if(strstr(params[1],ctx.nick))
+
+	if(strstr(params[1],"!status"))
 	{
-		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,"me?");
+		char tmp[80];
+		sprintf(tmp,"Channelsettings = %d",getChannelSettings(params[0]));
+		irc_cmd_msg(session,params[0],tmp);
 	}
-*/
+
+	if(strstr(params[1],"!set"))
+	{
+		int settings;
+		char line[200];
+		char parts[32][32];
+		int i = 0;
+		
+		strcpy(line,params[1]);
+
+		char *ptr =strtok(line," ");
+
+		while(ptr !=NULL)
+		{
+			sprintf(parts[i],"%s",ptr);
+			ptr = strtok(NULL, " ");
+			i++;
+		}
+		
+		settings = atoi(parts[2]);
+
+		if(strstr(parts[2],"privmsg"))
+		{		
+			privmsg_settings = settings;	
+		}
+		else
+		{
+			setChannelSettings(parts[1],settings);
+		}
+	}
 
 	if(strstr(params[1],"!debug"))
-	{
-		//printf("%s\n",botnick);
+	{	
+		int i;
+		for(i=0;i<MAX_CHANNELS;i++)
+			printf("%d=%s=%d\n",i,chansettings[i].channel,chansettings[i].settings);
 	}
 }
+
 
 
 void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -172,6 +270,7 @@ void event_connect (irc_session_t * session, const char * event, const char * or
 	sprintf(botnick,"%s",ctx.nick);
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
 	irc_cmd_join (session, ctx->channel, 0);
+	currentChannelCount++;
 }
 
 void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -184,14 +283,14 @@ void event_privmsg (irc_session_t * session, const char * event, const char * or
 {
 	printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
 
-	ircCommands(session,origin,params,31);
+	ircCommands(session,origin,params,privmsg_settings);
 }
 
 void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
 		
-	 ircCommands(session,origin,params,23);
+	ircCommands(session,origin,params,getChannelSettings(params[0]));
 }
 
 int main(int argc, char** argv)
