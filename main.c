@@ -12,7 +12,14 @@ typedef struct
 	char* nick;	
 } irc_ctx_t;
 
+typedef struct
+{
+	char* channel;
+	unsigned int settings;
+}channel_settings;
 //----------------- Gloabel Variablen
+
+#define MAX_CHANNELS 10
 
 irc_ctx_t ctx;
 char * server = NULL;
@@ -26,6 +33,21 @@ char botnick[100];
 char* filename = NULL;
 char configLine[BUFFER_SIZE];
 FILE *configFile;
+
+//--- IRC Commands Defines
+#define TOPIC_CHANGE	0x01
+#define NICK_CHANGE	0x02
+#define JOIN_PART	0x04
+#define QUIT		0x08
+#define GET_TIME	0x16
+
+//--- IRCC DEFAULT SETTINGS
+#define DEFAULT_CHANNEL_SETTINGS 31
+#define DEFAULT_PRIVMSG_SETTINGS 31
+
+unsigned int privmsg_settings = DEFAULT_PRIVMSG_SETTINGS;
+channel_settings chansettings[MAX_CHANNELS];
+
 
 //-- Time Vars
 
@@ -48,7 +70,7 @@ int configfileLaden(char * filen)
 		fclose(configFile);
 		return 0;
 	}
-
+ 
 	char tmp[BUFFER_SIZE];
 
  	while(fgets(configLine, BUFFER_SIZE, configFile) != NULL)
@@ -57,8 +79,6 @@ int configfileLaden(char * filen)
 	}
 
 	fclose(configFile);
-
-	//printf("%s",tmp);
 
 	char params[10][100];
 	int i=0;
@@ -79,51 +99,60 @@ int configfileLaden(char * filen)
 	return 1;
 }
 
-void ircCommands(irc_session_t * session,const char * origin,const char ** params)
+void ircCommands(irc_session_t * session,const char * origin,const char ** params,unsigned int settings)
 {
-	if ( !strcmp (params[1], "!quit") )
-		irc_cmd_quit (session, "Bot wird beendet...");
 	
+	
+	if (settings & QUIT && !strcmp (params[1], "!quit") )
+		irc_cmd_quit (session, "Bot wird beendet...");
+		
 	if(strstr(params[1],botnick))
 	{
 		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,"me?");
 	}
 	
-	if ( strstr (params[1], "!nick") == params[1] )
+	if (settings & NICK_CHANGE && strstr (params[1], "!nick") == params[1] )
 	{
 		sprintf(botnick,"%s",params[1] + 6);
 		irc_cmd_nick (session, params[1] + 6);
 	}
-	
-	if ( strstr (params[1], "!join") == params[1] )
-	{
-		irc_cmd_join (session, params[1] + 6,0);
-	}
 
-	if ( strstr (params[1], "!part") == params[1] )
-	{
-		if(strstr(params[0],ctx.channel) == 0)
+	if(settings & JOIN_PART)
+	{	
+
+		if (strstr (params[1], "!join") == params[1] )
 		{
-			irc_cmd_part (session, params[0]);
+			irc_cmd_join (session, params[1] + 6,0);
 		}
-		else
+
+		if (strstr (params[1], "!part") == params[1] )
 		{
-			irc_cmd_msg(session,params[0],"Hier geh ich net raus");
-		}	
-	
+			if(strstr(params[0],ctx.channel) == 0)
+			{
+				irc_cmd_part (session, params[0]);
+			}
+			else
+			{
+				irc_cmd_msg(session,params[0],"Hier geh ich net raus");
+			}	
+		
+		}
 	}
 
-	if(strstr(params[1],"!time"))
+	if(settings & GET_TIME && strstr(params[1],"!time"))
 	{	
 		char tmp[60];
 		sprintf(tmp,"Es ist %2d:%02d\n", (ptm->tm_hour+GMT)%24, ptm->tm_min);
 		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,tmp);
 	}
 
-	if ( !strcmp (params[1], "!topic") )
-		irc_cmd_topic (session, params[0], 0);
-	else if ( strstr (params[1], "!topic ") == params[1] )
-		irc_cmd_topic (session, params[0], params[1] + 7);
+	if(settings & TOPIC_CHANGE)
+	{
+		if ( !strcmp (params[1], "!topic") )
+			irc_cmd_topic (session, params[0], 0);
+		else if ( strstr (params[1], "!topic ") == params[1] )
+			irc_cmd_topic (session, params[0], params[1] + 7);
+	}
 
 /*	if(strstr(params[1],ctx.nick))
 	{
@@ -142,7 +171,6 @@ void event_connect (irc_session_t * session, const char * event, const char * or
 {
 	sprintf(botnick,"%s",ctx.nick);
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
-//	botnick = ctx.nick;
 	irc_cmd_join (session, ctx->channel, 0);
 }
 
@@ -156,23 +184,20 @@ void event_privmsg (irc_session_t * session, const char * event, const char * or
 {
 	printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
 
-	ircCommands(session,origin,params);
+	ircCommands(session,origin,params,31);
 }
 
 void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
 		
-	 ircCommands(session,origin,params);
+	 ircCommands(session,origin,params,23);
 }
 
 int main(int argc, char** argv)
 {
 	irc_callbacks_t callbacks;
 	irc_session_t *s;
-	
-//	botnick = NULL;
-
 	
 	//Time init
 	
