@@ -37,13 +37,13 @@ char configLine[BUFFER_SIZE];
 FILE *configFile;
 
 //--- IRC Commands Defines
-#define TOPIC_CHANGE	0x01
-#define NICK_CHANGE	0x02
-#define JOIN_PART	0x04
-#define QUIT		0x08
-#define GET_TIME	0x16
-#define LOG_FILE	0x64
-#define LOG_SQL		0x128
+#define TOPIC_CHANGE	1
+#define NICK_CHANGE	2
+#define JOIN_PART	4
+#define QUIT		8
+#define GET_TIME	16
+#define LOG_TXT 	32
+#define LOG_SQL		64
 
 //--- IRCC DEFAULT SETTINGS
 #define DEFAULT_CHANNEL_SETTINGS 31
@@ -296,18 +296,18 @@ void event_join (irc_session_t * session, const char * event, const char * origi
 
 void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
-	printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
+	//printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
 
 	ircCommands(session,origin,params,privmsg_settings);
 }
 
 void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
-//	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
+	//printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
 
 	int tmpsettings = getChannelSettings(params[0]);
-
-	if(tmpsettings & LOG_FILE)
+	printf("%d\n",LOG_TXT);
+	if(tmpsettings & LOG_TXT)
 		log_file(origin,params[0],params[1]);
 		
 	ircCommands(session,origin,params,tmpsettings);
