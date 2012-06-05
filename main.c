@@ -20,6 +20,8 @@ typedef struct
 }channel_settings;
 //----------------- Gloabel Variablen
 
+char* LOGFILE = "log.txt";
+
 #define MAX_CHANNELS 10
 
 irc_ctx_t ctx;
@@ -47,7 +49,7 @@ FILE *configFile;
 
 //--- IRCC DEFAULT SETTINGS
 #define DEFAULT_CHANNEL_SETTINGS 31
-#define DEFAULT_PRIVMSG_SETTINGS 31
+#define DEFAULT_PRIVMSG_SETTINGS 127
 
 unsigned int privmsg_settings = DEFAULT_PRIVMSG_SETTINGS;
 channel_settings chansettings[MAX_CHANNELS];
@@ -65,9 +67,12 @@ void log_file(const char name[],const char channel[],const char text[])
 {
 	time ( &rawtime );
 	ptm = gmtime ( &rawtime );
-
-	//(ptm->tm_hour+GMT)%24, ptm->tm_min,ptm->tm_sec,
-	printf("%02d.%02d.%4d - %02d:%02d:%02d - <%s> %s: %s\n",ptm->tm_mday,ptm->tm_mon,ptm->tm_year+1900,(ptm->tm_hour+GMT)%24, ptm->tm_min,ptm->tm_sec,channel,name,text);
+	
+	FILE * log = fopen(LOGFILE,"a");
+	
+	fprintf(log,"%02d.%02d.%4d - %02d:%02d:%02d - <%s> %s: %s\n",ptm->tm_mday,ptm->tm_mon,ptm->tm_year+1900,(ptm->tm_hour+GMT)%24, ptm->tm_min,ptm->tm_sec,channel,name,text);
+	fclose(log);
+	
 }
 
 
@@ -173,7 +178,6 @@ unsigned int getChannelSettings(const char channel[])
 
 void ircCommands(irc_session_t * session,const char * origin,const char ** params,unsigned int settings)
 {
-	
 	
 	if (settings & QUIT && !strcmp (params[1], "!quit") )
 		irc_cmd_quit (session, "Bot wird beendet...");
