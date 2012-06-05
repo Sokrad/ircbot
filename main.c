@@ -306,7 +306,7 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 	//printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
 
 	int tmpsettings = getChannelSettings(params[0]);
-	printf("%d\n",LOG_TXT);
+
 	if(tmpsettings & LOG_TXT)
 		log_file(origin,params[0],params[1]);
 		
