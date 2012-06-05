@@ -4,7 +4,8 @@
 #include <ctype.h>
 
 #include "lib/libircclient/libircclient.h"
-#include "lib/sqlite/sqlite3.h"
+#include <sqlite3.h>
+//#include "lib/sqlite/sqlite3.h"
 
 
 typedef struct
@@ -18,6 +19,12 @@ typedef struct
 	char channel[32];
 	unsigned int settings;
 }channel_settings;
+
+//----------------- SQLite Variablen
+
+#define SQLITEFILE "sqlite.sqlite"
+
+
 //----------------- Gloabel Variablen
 
 char* LOGFILE = "log.txt";
@@ -301,6 +308,9 @@ void event_join (irc_session_t * session, const char * event, const char * origi
 void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	//printf ("'%s' said me (%s): %s\n", origin ? origin : "someone",	params[0], params[1] );
+	if(privmsg_settings & LOG_TXT)
+		log_file(origin,"privmsg",params[1]);
+
 
 	ircCommands(session,origin,params,privmsg_settings);
 }
@@ -322,6 +332,8 @@ int main(int argc, char** argv)
 	irc_callbacks_t callbacks;
 	irc_session_t *s;
 	
+	sqlite3 *sqlitedb;
+	
 	//Time init
 	
 	time ( &rawtime );
@@ -329,6 +341,13 @@ int main(int argc, char** argv)
 
 
 	printf(" : - Bot wird gestartet...\n");
+
+	//-- SQLite Init
+
+	printf(" : - SQLite wird initialisiert...\n");
+
+	sqlite3_open(SQLITEFILE, &sqlitedb);
+	
 
 	switch(argc)
 	{
@@ -404,10 +423,13 @@ int main(int argc, char** argv)
 	
 	if( irc_run (s) )
 	{
+		printf (" : - SQLite wird geschlossen. \n");
+		sqlite3_close(sqlitedb);
 		printf (" : - Bot wurde beendet. \n");
 		return 1;
 	}
 
+	sqlite3_close(sqlitedb);
 	return 1;
 }
 
