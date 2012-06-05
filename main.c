@@ -63,7 +63,11 @@ struct tm * ptm;
 
 void log_file(const char name[],const char channel[],const char text[])
 {
-	printf("000000 - %s@%s: %s\n",name,channel,text);
+	time ( &rawtime );
+	ptm = gmtime ( &rawtime );
+
+	//(ptm->tm_hour+GMT)%24, ptm->tm_min,ptm->tm_sec,
+	printf("%02d.%02d.%4d - %02d:%02d:%02d - <%s> %s: %s\n",ptm->tm_mday,ptm->tm_mon,ptm->tm_year+1900,(ptm->tm_hour+GMT)%24, ptm->tm_min,ptm->tm_sec,channel,name,text);
 }
 
 
@@ -213,6 +217,9 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	if(settings & GET_TIME && strstr(params[1],"!time"))
 	{	
 		char tmp[60];
+		time ( &rawtime );
+		ptm = gmtime ( &rawtime );
+	
 		sprintf(tmp,"Es ist %2d:%02d\n", (ptm->tm_hour+GMT)%24, ptm->tm_min);
 		irc_cmd_msg(session, params[0][0] =='#' ? params[0] : origin ,tmp);
 	}
