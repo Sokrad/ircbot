@@ -42,6 +42,8 @@ FILE *configFile;
 #define JOIN_PART	0x04
 #define QUIT		0x08
 #define GET_TIME	0x16
+#define LOG_FILE	0x64
+#define LOG_SQL		0x128
 
 //--- IRCC DEFAULT SETTINGS
 #define DEFAULT_CHANNEL_SETTINGS 31
@@ -57,6 +59,12 @@ channel_settings chansettings[MAX_CHANNELS];
 
 time_t rawtime;
 struct tm * ptm;
+
+
+void log_file(const char name[],const char channel[],const char text[])
+{
+	printf("000000 - %s@%s: %s\n",name,channel,text);
+}
 
 
 int configfileLaden(char * filen)
@@ -288,9 +296,14 @@ void event_privmsg (irc_session_t * session, const char * event, const char * or
 
 void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
-	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
+//	printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
+
+	int tmpsettings = getChannelSettings(params[0]);
+
+	if(tmpsettings & LOG_FILE)
+		log_file(origin,params[0],params[1]);
 		
-	ircCommands(session,origin,params,getChannelSettings(params[0]));
+	ircCommands(session,origin,params,tmpsettings);
 }
 
 int main(int argc, char** argv)
