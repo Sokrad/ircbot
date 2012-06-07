@@ -23,7 +23,7 @@ typedef struct
 //----------------- SQLite Variablen
 
 #define SQLITEFILE "sqlite.sqlite"
-
+sqlite3 *sqlitedb = NULL;
 
 //----------------- Gloabel Variablen
 
@@ -52,7 +52,7 @@ FILE *configFile;
 #define QUIT		8
 #define GET_TIME	16
 #define LOG_TXT 	32
-#define LOG_SQL		64
+#define URL_SQL		64
 
 //--- IRCC DEFAULT SETTINGS
 #define DEFAULT_CHANNEL_SETTINGS 31
@@ -289,6 +289,60 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	}
 }
 
+void sql_createtables()
+{
+	sqlite3_exec(sqlitedb, "CREATE TABLE urls (id integer primary key, nick text, channel text,  url text);", NULL, NULL, NULL);
+}
+
+void sql_addurl(const char name[],const char channel[],const char url[])
+{
+	char tmp[1200];
+	sprintf(tmp,"INSERT INTO urls (nick,channel, url) VALUES ('%s', '%s', '%s');",name,channel,url);
+	sqlite3_exec(sqlitedb, tmp, NULL, NULL, NULL);
+}
+
+void sql_geturls()
+{
+	sqlite3_stmt *vm;
+        sqlite3_prepare(sqlitedb, "SELECT * FROM urls", -1, &vm, NULL);
+
+        printf("ID:\tnick\tchannel\turl\n");
+
+	while (sqlite3_step(vm) != SQLITE_DONE)
+        {
+                printf("%i\t%s\t%s\t%s\n", 
+	                sqlite3_column_int(vm, 0), 
+        	        sqlite3_column_text(vm, 1),
+			sqlite3_column_text(vm, 2),
+                	sqlite3_column_text(vm, 3)
+                );
+        }
+        sqlite3_finalize(vm);
+	
+}
+
+void sql_geturl(irc_session_t *session,const char name[],int counter)
+{
+	sqlite3_stmt *vm;
+        sqlite3_prepare(sqlitedb, "SELECT * FROM urls ORDER BY id DESC", -1, &vm, NULL);
+	
+	int i = 0;	
+
+	//printf("ID:\tnick\tchannel\turl\n");
+
+	while (sqlite3_step(vm) != SQLITE_DONE)
+        {
+                char tmp[1200];
+		sprintf(tmp,"%s (%s - %s)",sqlite3_column_text(vm, 3),sqlite3_column_text(vm, 1),sqlite3_column_text(vm, 2));
+		irc_cmd_msg(session,name,tmp);
+		i++;
+		if(i==counter)
+			break;
+        }
+        sqlite3_finalize(vm);
+	
+}
+
 
 
 void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -311,6 +365,10 @@ void event_privmsg (irc_session_t * session, const char * event, const char * or
 	if(privmsg_settings & LOG_TXT)
 		log_file(origin,"privmsg",params[1]);
 
+	if(privmsg_settings & URL_SQL && (strstr(params[1],"http://") || strstr(params[1],"www.") ))
+	{
+		sql_addurl(origin,"privmsg",params[1]);
+	}	
 
 	ircCommands(session,origin,params,privmsg_settings);
 }
@@ -323,16 +381,24 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 
 	if(tmpsettings & LOG_TXT)
 		log_file(origin,params[0],params[1]);
+
+	if(tmpsettings & URL_SQL && (strstr(params[1],"http://") || strstr(params[1],"www.") ))
+	{
+		sql_addurl(origin,params[0],params[1]);
+	}
+	
+	if(tmpsettings & URL_SQL && strstr(params[1],"!geturls"))
+		sql_geturl(session,origin,5);
+
 		
 	ircCommands(session,origin,params,tmpsettings);
 }
+
 
 int main(int argc, char** argv)
 {
 	irc_callbacks_t callbacks;
 	irc_session_t *s;
-	
-	sqlite3 *sqlitedb;
 	
 	//Time init
 	
@@ -347,6 +413,8 @@ int main(int argc, char** argv)
 	printf(" : - SQLite wird initialisiert...\n");
 
 	sqlite3_open(SQLITEFILE, &sqlitedb);
+	sql_createtables();
+	
 	
 
 	switch(argc)
