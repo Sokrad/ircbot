@@ -47,7 +47,7 @@ Der Bot Reagiert auf folgene Befehle im MasterChannel(ist der erste
 Channel der angegeben wurde).
 
 - !quit  			= Der Bot beendet sicht
-- !nick <neuer Name>		= Der Bot ändert seinen Namen.
+- !nick <neur Name>		= Der Bot ändert seinen Namen.
 - !join #channel		= Der Bot join einen gewissen Channel.
 - !part				= Der Bot geht aus dem jeweiligen Channel 
 				  wo es gesagt wird. Aber nicht aus dem 
