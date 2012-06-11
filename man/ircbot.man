@@ -1,0 +1,28 @@
+.TH ircbot  1.0 "11.06.2012" "" "IRC Bot's Manual von Ralf Moter"
+
+.SH NAME
+./ircbot \- ist ein Programm für einen IRCBot
+
+..SH SYNOPSIS
+.B ./ircbot
+.RI [ \fB<server>\fP  \fB<nick>\fP   \fB'<#channel>'\fP ]
+.br
+
+.B ./ircbot
+.RI [ \fBconfigfile\fP ]
+.br
+
+.SH DESCRIPTION
+Dieses Programm ist ein IRCBot der im 9. Trimester in Linuxpogrammierung 2012 von Ralf Moter programmiert wurde.
+
+.SH OPTIONS
+
+.IP \fB\-server\fP
+Der IRCServer welcher der Bot Connecten soll
+.IP \fB\-nick\fP
+Der Name des Bots
+.IP \fB\-#channel\fP
+Der Channel wo der Bot Joinen soll als erstes
+.SH NOTES
+
+.SH "Bei Fragen kommt einfach in irc.twice-irc.de channel #finf"
