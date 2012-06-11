@@ -1,34 +1,74 @@
+/******************************************************/
+/**
+* @file main.c
+* @brief Die Datei beinhaltet einen IRC Bot mit ein paar Zusatzfunktionen
+* 
+* Projekt: Linuxprogrammierung 2012
+* Dozent:  Christoph Hahn
+* Autor:   Ralf Moter
+* 
+* @todo Den Bot aufteilen in einzelle Modulle und gegebenfalls noch weiter funktionen einbauen
+* @version 1.0 
+*
+******************************************************/
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
 
+/**
+* includes für externe Libs
+* libircclient 1.6
+* sqlite 3071201
+*/
+
 #include "lib/libircclient/libircclient.h"
 #include <sqlite3.h>
-//#include "lib/sqlite/sqlite3.h"
 
-
+/**
+* @struct irc_ctx_t
+* @brief wird benötigt von der Libircclient zum managen von Bot Name und Bot Channels
+*/
 typedef struct
 {
 	char* channel;
 	char* nick;	
 } irc_ctx_t;
 
+/**
+* @struct channel_settings
+* @brief Das Struct ist dafür da um Channelsettings zu speichern
+*/
 typedef struct
 {
 	char channel[32];
 	unsigned int settings;
 }channel_settings;
 
+
 //----------------- SQLite Variablen
 
+/**
+* @def SQLITEFILE
+* @brief Der Dateiname für die SQLite Datei.
+*/
 #define SQLITEFILE "sqlite.sqlite"
+
 sqlite3 *sqlitedb = NULL;
 
 //----------------- Gloabel Variablen
 
-char* LOGFILE = "log.txt";
+/**
+* @def LOGFILE
+* @brief Der Dateiname für die Logfiles.
+*/
+#define LOGFILE "log.txt"
 
+/**
+* @def MAX_CHANNELS
+* @brief Anzahl der maximalen channel die der Bot verwaltet.
+*/
 #define MAX_CHANNELS 10
 
 irc_ctx_t ctx;
@@ -69,6 +109,13 @@ channel_settings chansettings[MAX_CHANNELS];
 time_t rawtime;
 struct tm * ptm;
 
+/*
+* @fn void log_file (const char name[],const char channel[],const char text[])
+* @brief Die Funktion schreibt in das Logfile.
+* @param name Nickname von dem der was geschrieben hat.
+* @param channel Channel wo was geschrieben wurde
+* @param text Das was der geschrieben hat.
+*/
 
 void log_file(const char name[],const char channel[],const char text[])
 {
@@ -82,7 +129,12 @@ void log_file(const char name[],const char channel[],const char text[])
 	
 }
 
-
+/**
+* @fn int configfileLaden(char* filen)
+* @brief Läd die Botconfigs aus einem Externen File in den Bot rein.
+* @param filen Filename von dem Configfile.
+* @return int 0 = Fehler aufgetretten 1 = korrekt durchgeführt
+*/
 int configfileLaden(char * filen)
 {
 
@@ -125,6 +177,13 @@ int configfileLaden(char * filen)
 	return 1;
 }
 
+/**
+* @fn void setChannelSettings(const char channel[],const unsigned int settings)
+* @brief Die Funktion sucht den passenden Channel in der Config und überschreibt seine Channelsettings.
+* @param channel Channelname zum editieren.
+* @param settings Die Settings die der Channel erhalten soll.
+*/
+
 void setChannelSettings(const char channel[],const unsigned int settings)
 {
 	
@@ -140,6 +199,12 @@ void setChannelSettings(const char channel[],const unsigned int settings)
 
 }
 
+/**
+* @fn void rmChannel(const char channel[])
+* @brief Die Funktion entfernt einen Channel aus der Verwaltung der Channel Settings
+* @param channel Der Channel der gelöscht werden soll.
+*/
+
 void rmChannel(const char channel[])
 {
 	int i;
@@ -154,12 +219,27 @@ void rmChannel(const char channel[])
 
 }
 
+/**
+* @fn void addChannelSettings(const char channel[],const unsigned int settings)
+* @brief Die Funktion fügt einen Channel in die Verwaltung der Channel Settings hinzu.
+* @param channel Der Channel der hinzugefügt werden soll.
+* param settings Die Settings die der Channel bekommen soll.
+*/
+
+
 void addChannelSettings(const char channel[],const unsigned int settings)
 {
 	strcpy(chansettings[(currentChannelCount-1)].channel,channel);
 	chansettings[(currentChannelCount-1)].settings = settings;
 	printf(" : - %s config set = %d\n",chansettings[(currentChannelCount-1)].channel,chansettings[(currentChannelCount-1)].settings);
 }
+
+/**
+* @fn unsigned int getChannelSettings(const char channel[])
+* @brief Gibt aus den Channelsettings die Settings für den gesuchten Channel zurück.
+* @param channel Der zusuchen Channel.
+* @return unsigned int gibt die Channelsettings zurück.
+*/
 
 unsigned int getChannelSettings(const char channel[])
 {
@@ -182,6 +262,10 @@ unsigned int getChannelSettings(const char channel[])
 	
 }
 
+/**
+* @fn void ircCommands(irc_session_t * session,const char * origin,const char ** params,unsigned int settings)
+* @brief Die Funktion arbeitet die allgemeinen Channelfunktionen ab.
+*/
 
 void ircCommands(irc_session_t * session,const char * origin,const char ** params,unsigned int settings)
 {
@@ -289,11 +373,23 @@ void ircCommands(irc_session_t * session,const char * origin,const char ** param
 	}
 }
 
+/**
+* @fn void sql_createtables()
+* @brief Die Funktion erzeugt die Tabele in der SQLite DB.
+*/
+
 void sql_createtables()
 {
 	sqlite3_exec(sqlitedb, "CREATE TABLE urls (id integer primary key, nick text, channel text,  url text);", NULL, NULL, NULL);
 }
 
+/**
+* @fn void sql_addurl(const char name[],const char channel[],const char url[])
+* @brief Die Funktion fürgt eine URL in die Datenbank hinzu.
+* @param name Wer hat die URL gepostet.
+* @param channel Wo hat er die URL gepostet.
+* @param url Welche URL hat er gepostet.
+*/
 void sql_addurl(const char name[],const char channel[],const char url[])
 {
 	char tmp[1200];
@@ -301,6 +397,10 @@ void sql_addurl(const char name[],const char channel[],const char url[])
 	sqlite3_exec(sqlitedb, tmp, NULL, NULL, NULL);
 }
 
+/**
+* @fn void sql_geturls()
+* @brief Die Funktion gibt in der UNIX Console den bestand der Datenbank aus.
+*/
 void sql_geturls()
 {
 	sqlite3_stmt *vm;
@@ -320,6 +420,14 @@ void sql_geturls()
         sqlite3_finalize(vm);
 	
 }
+
+/**
+* @fn void sql_geturl(irc_session_t *session,const char name[],int counter)
+* @brief Die Funktion gibt eine gewisse anzahl der Letzten Eingetragenen URLs aus.
+* @param session Die IRC Session.
+* @param name Der Benutzen der die URLs wissen will.
+* @param counter Die Anzahl wieviele URLs ausgegeben werden.
+*/
 
 void sql_geturl(irc_session_t *session,const char name[],int counter)
 {
@@ -343,7 +451,10 @@ void sql_geturl(irc_session_t *session,const char name[],int counter)
 	
 }
 
-
+/**
+* @fn void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+* @brief Standart LIBIRC Event Funktion für Connecten.
+*/
 
 void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
@@ -353,11 +464,21 @@ void event_connect (irc_session_t * session, const char * event, const char * or
 	currentChannelCount++;
 }
 
+/**
+* @fn void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+* @brief Standart LIBIRC Event Funktion für Channel Joinen.
+*/
+
 void event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	irc_cmd_user_mode (session, "+i");
 	//irc_cmd_msg (session, params[0], "Hi all");
 }
+
+/**
+* @fn void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+* @brief Standart LIBIRC Event Funktion für eine Privat Nachricht.
+*/
 
 void event_privmsg (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
@@ -373,6 +494,10 @@ void event_privmsg (irc_session_t * session, const char * event, const char * or
 	ircCommands(session,origin,params,privmsg_settings);
 }
 
+/**
+* @fn void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+* @brief Standart LIBIRC Event Funktion für in einem Channel.
+*/
 void event_channel (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	//printf("'%s' said in channel %s: %s\n",origin ? origin : "someone",params[0],params[1]);
@@ -394,6 +519,9 @@ void event_channel (irc_session_t * session, const char * event, const char * or
 	ircCommands(session,origin,params,tmpsettings);
 }
 
+/**
+* @brief Einstieg in das Programm.
+*/
 
 int main(int argc, char** argv)
 {
