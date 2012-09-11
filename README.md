@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ######################################
 #
 ### IRC BOT von Ralf Moter README
@@ -89,3 +90,7 @@ lautet der Befehlt so:
 
 
 
+=======
+ircbot
+======
+>>>>>>> 0e801a8c5b7833fb9c1eb57cef6afba58b629989
